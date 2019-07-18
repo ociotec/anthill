@@ -8,12 +8,16 @@ let height;
 let ants;
 
 const PERIOD = 100;
-const CELL = 10;
+const CELL = 15;
 const CELL_EMPTY = 0;
 const CELL_ANT = 1;
-const CELL_LARVA = 2;
-const CELL_WALL = 3;
+const CELL_BUSY_ANT = 2;
+const CELL_LARVA = 3;
+const CELL_WALL = 4;
 
+const WALLS_PERCENTAGE = 0.15;
+const MAX_WALL = 0.50;
+const MIN_WALL = 0.05;
 const ANTS_PERCENTAGE = 0.02;
 const CHANCES_ANT_REMAINS_SAME_DIRECTION = 20;
 
@@ -41,6 +45,9 @@ function drawCell(x, y) {
             case CELL_ANT:
                 context.fillStyle = "#426CFF";
                 break;
+            case CELL_BUSY_ANT:
+                context.fillStyle = "#8bb3ff";
+                break;
             case CELL_LARVA:
                 context.fillStyle = "#C9E8FB";
                 break;
@@ -63,37 +70,48 @@ function drawAnthill() {
     }
 }
 
-function getRandomAntMovement(ant) {
+function getRandomMovement(element) {
     do {
-        ant.incX = getRandomInc();
-        ant.incY = getRandomInc();
-    } while ((ant.incX === 0) && (ant.incY === 0));
+        element.incX = getRandomInc();
+        element.incY = getRandomInc();
+    } while ((element.incX === 0) && (element.incY === 0));
+}
+
+function getRandomNoDiagonalMovement(element) {
+    do {
+        element.incX = getRandomInc();
+        element.incY = getRandomInc();
+    } while (((element.incX === 0) && (element.incY === 0)) || ((element.incX !== 0) && (element.incY !== 0)));
 }
 
 function antRemainsSameDirection() {
     return getRandom(CHANCES_ANT_REMAINS_SAME_DIRECTION) !== 0;
 }
 
-function moveX(ant) {
-    return (ant.x + ant.incX + width) % width;
+function calculateMoveX(element) {
+    return (element.x + element.incX + width) % width;
 }
 
-function moveY(ant) {
-    return (ant.y + ant.incY + height) % height;
+function calculateMoveY(element) {
+    return (element.y + element.incY + height) % height;
+}
+
+function move(element) {
+    element.x = calculateMoveX(element);
+    element.y = calculateMoveY(element);
 }
 
 function moveAnts() {
     for (let i = 0; i < ants.length; i++) {
         let ant = ants[i];
-        let newX = moveX(ant);
-        let newY = moveY(ant);
+        let newX = calculateMoveX(ant);
+        let newY = calculateMoveY(ant);
         if ((cells[newY][newX] === CELL_EMPTY) && antRemainsSameDirection()) {
             cells[ant.y][ant.x] = CELL_EMPTY;
-            ant.x = moveX(ant);
-            ant.y = moveY(ant);
+            move(ant);
             cells[ant.y][ant.x] = CELL_ANT;
         } else {
-            getRandomAntMovement(ants[i]);
+            getRandomMovement(ants[i]);
         }
     }
 }
@@ -103,20 +121,27 @@ function frame() {
     drawAnthill();
 }
 
-function initAnthill() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-    width = Math.floor(canvas.width / CELL);
-    height = Math.floor(canvas.height / CELL);
-    cells = [];
-    cells.length = height;
-    for (let y = 0; y < height; y++) {
-        cells[y] = [];
-        cells[y].length = width;
-        for (let x = 0; x < width; x++) {
-            cells[y][x] = CELL_EMPTY;
+function initWalls() {
+    let walls = width * height * WALLS_PERCENTAGE;
+    let minWall = Math.floor(Math.min(width, height) * MIN_WALL);
+    let maxWall = Math.floor(Math.min(width, height) * MAX_WALL);
+    let wall = {x: 0, y: 0, incX: 0, incY: 0};
+    while (walls > 0) {
+        length = getRandomMinMax(minWall, maxWall);
+        getRandomNoDiagonalMovement(wall);
+        wall.x = getRandom(width);
+        wall.y = getRandom(height);
+        for (let i = 0; (i < length) && (walls > 0); i++) {
+            if (cells[wall.y][wall.x] === CELL_EMPTY) {
+                cells[wall.y][wall.x] = CELL_WALL;
+                walls--;
+            }
+            move(wall);
         }
     }
+}
+
+function initAnts() {
     ants = [];
     ants.length = Math.floor(width * height * ANTS_PERCENTAGE);
     for (let i = 0; i < ants.length; i++) {
@@ -128,8 +153,28 @@ function initAnthill() {
         } while (cell !== CELL_EMPTY);
         cells[y][x] = CELL_ANT;
         ants[i] = {x: x, y: y, incX: 0, incY: 0};
-        getRandomAntMovement(ants[i]);
+        getRandomMovement(ants[i]);
     }
+}
+
+function initAnthill() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    width = Math.floor(canvas.width / CELL);
+    height = Math.floor(canvas.height / CELL);
+
+    cells = [];
+    cells.length = height;
+    for (let y = 0; y < height; y++) {
+        cells[y] = [];
+        cells[y].length = width;
+        for (let x = 0; x < width; x++) {
+            cells[y][x] = CELL_EMPTY;
+        }
+    }
+
+    initWalls();
+    initAnts();
 }
 
 function anthill(id) {
