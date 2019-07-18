@@ -12,14 +12,15 @@ const CELL = 15;
 const CELL_EMPTY = 0;
 const CELL_ANT = 1;
 const CELL_BUSY_ANT = 2;
-const CELL_LARVA = 3;
+const CELL_GRUB = 3;
 const CELL_WALL = 4;
 
-const WALLS_PERCENTAGE = 0.15;
+const WALLS_PERCENTAGE = 0.10;
 const MAX_WALL = 0.50;
 const MIN_WALL = 0.05;
-const ANTS_PERCENTAGE = 0.02;
+const ANTS_PERCENTAGE = 0.01;
 const CHANCES_ANT_REMAINS_SAME_DIRECTION = 20;
+const GRUBS_PERCENTAGE = 0.05;
 
 function getRandom(max) {
     return getRandomMinMax(0, max - 1);
@@ -40,7 +41,7 @@ function drawBackground() {
 
 function drawCell(x, y) {
     let cell = cells[y][x];
-    if ([CELL_ANT, CELL_LARVA, CELL_WALL].includes(cell)) {
+    if ([CELL_ANT, CELL_BUSY_ANT, CELL_GRUB, CELL_WALL].includes(cell)) {
         switch (cell) {
             case CELL_ANT:
                 context.fillStyle = "#426CFF";
@@ -48,8 +49,8 @@ function drawCell(x, y) {
             case CELL_BUSY_ANT:
                 context.fillStyle = "#8bb3ff";
                 break;
-            case CELL_LARVA:
-                context.fillStyle = "#C9E8FB";
+            case CELL_GRUB:
+                context.fillStyle = "#D6EAFF";
                 break;
             case CELL_WALL:
                 context.fillStyle = "#FF822D";
@@ -157,6 +158,18 @@ function initAnts() {
     }
 }
 
+function initGrubs() {
+    let grubs = width * height * GRUBS_PERCENTAGE;
+    while (grubs > 0) {
+        let x = getRandom(width);
+        let y = getRandom(height);
+        if (cells[y][x] === CELL_EMPTY) {
+            cells[y][x] = CELL_GRUB;
+            grubs--;
+        }
+    }
+}
+
 function initAnthill() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -175,6 +188,7 @@ function initAnthill() {
 
     initWalls();
     initAnts();
+    initGrubs();
 }
 
 function anthill(id) {
