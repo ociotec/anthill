@@ -21,6 +21,8 @@ const MIN_WALL = 0.05;
 const ANTS_PERCENTAGE = 0.01;
 const CHANCES_ANT_REMAINS_SAME_DIRECTION = 20;
 const GRUBS_PERCENTAGE = 0.05;
+const MIN_GRUBS_NEAR_BY_TO_DROP = 2;
+const MAX_GRUBS_NEAR_BY_TO_CARRY = 4;
 
 function getRandom(max) {
     return getRandomMinMax(0, max - 1);
@@ -44,7 +46,7 @@ function drawCell(x, y) {
     if ([CELL_ANT, CELL_BUSY_ANT, CELL_GRUB, CELL_WALL].includes(cell)) {
         switch (cell) {
             case CELL_ANT:
-                context.fillStyle = "#426CFF";
+                context.fillStyle = "#1D4EFF";
                 break;
             case CELL_BUSY_ANT:
                 context.fillStyle = "#8bb3ff";
@@ -89,6 +91,27 @@ function antRemainsSameDirection() {
     return getRandom(CHANCES_ANT_REMAINS_SAME_DIRECTION) !== 0;
 }
 
+function countGrubsNearBy(x, y) {
+    let grubsNearBy = 0;
+    let grub = {x: x, y: y, incX: 0, incY: 0};
+    for (grub.incY = -1; grub.incY <= +1; grub.incY++) {
+        for (grub.incX = -1; grub.incX <= +1; grub.incX++) {
+            if (cells[calculateMoveY(grub)][calculateMoveX(grub)] == CELL_GRUB) {
+                grubsNearBy++;
+            }
+        }
+    }
+    return grubsNearBy;
+}
+
+function enoughNearByGrubs(x, y) {
+    return countGrubsNearBy(x, y) >= MIN_GRUBS_NEAR_BY_TO_DROP;
+}
+
+function grubIsAlone(x, y) {
+    return countGrubsNearBy(x, y) <= MAX_GRUBS_NEAR_BY_TO_CARRY;
+}
+
 function calculateMoveX(element) {
     return (element.x + element.incX + width) % width;
 }
@@ -102,15 +125,27 @@ function move(element) {
     element.y = calculateMoveY(element);
 }
 
+function moveAnt(ant) {
+    cells[ant.y][ant.x] = CELL_EMPTY;
+    move(ant);
+    cells[ant.y][ant.x] = ant.busy ? CELL_BUSY_ANT : CELL_ANT;
+}
+
 function moveAnts() {
     for (let i = 0; i < ants.length; i++) {
         let ant = ants[i];
         let newX = calculateMoveX(ant);
         let newY = calculateMoveY(ant);
-        if ((cells[newY][newX] === CELL_EMPTY) && antRemainsSameDirection()) {
-            cells[ant.y][ant.x] = CELL_EMPTY;
-            move(ant);
+        if ((cells[newY][newX] === CELL_GRUB) && !ant.busy && grubIsAlone(newX, newY)) {
+            ant.busy = true;
+            moveAnt(ant);
+        } else if ((cells[newY][newX] === CELL_EMPTY) && ant.busy && enoughNearByGrubs(newX, newY)) {
+            ant.busy = false;
+            cells[newY][newX] = CELL_GRUB;
             cells[ant.y][ant.x] = CELL_ANT;
+            getRandomMovement(ants[i]);
+        } else if ((cells[newY][newX] === CELL_EMPTY) && antRemainsSameDirection()) {
+            moveAnt(ant);
         } else {
             getRandomMovement(ants[i]);
         }
@@ -153,7 +188,7 @@ function initAnts() {
             cell = cells[y][x];
         } while (cell !== CELL_EMPTY);
         cells[y][x] = CELL_ANT;
-        ants[i] = {x: x, y: y, incX: 0, incY: 0};
+        ants[i] = {x: x, y: y, incX: 0, incY: 0, busy: false};
         getRandomMovement(ants[i]);
     }
 }
