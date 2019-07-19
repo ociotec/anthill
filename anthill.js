@@ -1,5 +1,8 @@
 let canvas;
 let context;
+let timer = null;
+let period = 100;
+let cellSize = 15;
 
 let cells;
 let width;
@@ -7,8 +10,11 @@ let height;
 
 let ants;
 
-const PERIOD = 100;
-const CELL = 15;
+const MIN_PERIOD = 1;
+const MAX_PERIOD = 5000;
+
+const MIN_CELL_SIZE = 3;
+const MAX_CELL_SIZE = 50;
 const CELL_EMPTY = 0;
 const CELL_ANT = 1;
 const CELL_BUSY_ANT = 2;
@@ -58,9 +64,9 @@ function drawCell(x, y) {
                 context.fillStyle = "#FF822D";
                 break;
         }
-        let posX = CELL * x;
-        let posY = CELL * y;
-        context.fillRect(posX, posY, CELL - 1, CELL - 1);
+        let posX = cellSize * x;
+        let posY = cellSize * y;
+        context.fillRect(posX, posY, cellSize - 1, cellSize - 1);
     }
 }
 
@@ -110,6 +116,45 @@ function enoughNearByGrubs(x, y) {
 
 function grubIsAlone(x, y) {
     return countGrubsNearBy(x, y) <= MAX_GRUBS_NEAR_BY_TO_CARRY;
+}
+
+function setTimer() {
+    if (timer !== null) {
+        clearInterval(timer);
+    }
+    timer = setInterval(frame, period);
+}
+
+function decreasePeriod() {
+    period /= 2;
+    if (period < MIN_PERIOD) {
+        period = MIN_PERIOD;
+    }
+    setTimer();
+}
+
+function increasePeriod() {
+    period *= 2;
+    if (period > MAX_PERIOD) {
+        period = MAX_PERIOD;
+    }
+    setTimer();
+}
+
+function decreaseCellSize() {
+    cellSize--;
+    if (cellSize < MIN_CELL_SIZE) {
+        cellSize = MIN_CELL_SIZE;
+    }
+    initAnthill();
+}
+
+function increaseCellSize() {
+    cellSize++;
+    if (cellSize > MAX_CELL_SIZE) {
+        cellSize = MAX_CELL_SIZE;
+    }
+    initAnthill();
 }
 
 function calculateMoveX(element) {
@@ -208,8 +253,8 @@ function initGrubs() {
 function initAnthill() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
-    width = Math.floor(canvas.width / CELL);
-    height = Math.floor(canvas.height / CELL);
+    width = Math.floor(canvas.width / cellSize);
+    height = Math.floor(canvas.height / cellSize);
 
     cells = [];
     cells.length = height;
@@ -226,14 +271,43 @@ function initAnthill() {
     initGrubs();
 }
 
+function keyPressed(event) {
+    let key = event.key.toUpperCase();
+    switch (key) {
+        case 'Q':
+            decreasePeriod();
+            break;
+        case 'A':
+            increasePeriod();
+            break;
+        case 'W':
+            increaseCellSize();
+            break;
+        case 'S':
+            decreaseCellSize();
+            break;
+        case 'R':
+            initAnthill();
+            break;
+        case 'P':
+            if (timer === null) {
+                setTimer();
+            } else {
+                clearInterval(timer);
+                timer = null;
+            }
+            break;
+    }
+    event.preventDefault();
+}
+
 function anthill(id) {
     canvas = document.getElementById(id);
     context = canvas.getContext('2d');
     initAnthill();
     drawAnthill();
 
-    setInterval(frame, PERIOD);
-    window.addEventListener("resize", function() {
-        initAnthill();
-    });
+    setTimer();
+    window.addEventListener("resize", initAnthill);
+    window.addEventListener("keypress", keyPressed);
 }
